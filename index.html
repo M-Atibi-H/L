@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat Page</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-image: url('1718605413739.jpg');
+      background-size: cover;
+    }
+    form {
+      max-width: 300px;
+      margin: 0 auto 20px;
+      padding: 20px;
+      border: 1px solid #ccc;
+      background-color: rgba(249, 249, 249, 0.8);
+    }
+    input[type="text"], input[type="password"] {
+      width: calc(100% - 20px);
+      padding: 10px;
+      margin: 8px 0;
+      display: inline-block;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    input[type="submit"] {
+      background-color: #4CAF50;
+      color: white;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      width: 100%;
+    }
+    input[type="submit"]:hover {
+      background-color: #45a049;
+    }
+    #navbar {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 600px;
+      margin-bottom: 20px;
+    }
+    .nav-button {
+      cursor: pointer;
+      color: blue;
+      text-decoration: underline;
+    }
+    #dashboardSection, #chatSection {
+      display: none;
+      max-width: 600px;
+      width: 100%;
+      margin-top: 20px;
+    }
+    #messages {
+      border: 1px solid #ccc;
+      padding: 10px;
+      height: 300px;
+      overflow-y: scroll;
+      background-color: rgba(249, 249, 249, 0.8);
+    }
+    #messages p {
+      margin: 10px 0;
+    }
+    #newMessage {
+      width: calc(100% - 22px);
+      padding: 10px;
+      margin-top: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    #sendMessage {
+      padding: 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    #userList {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .user {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .user img {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+    }
+    .post {
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin: 10px 0;
+      background-color: rgba(249, 249, 249, 0.8);
+      position: relative;
+    }
+    .post img, .post video {
+      max-width: 100%;
+    }
+    .post .username {
+      font-weight: bold;
+    }
+    .reaction-buttons {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      display: flex;
+      gap: 5px;
+    }
+    .reaction-buttons button {
+      background: none;
+      border: none;
+      cursor: pointer;
+    }
+    .comments {
+      margin-top: 10px;
+      background-color: #f9f9f9;
+      padding: 10px;
+    }
+    .comment {
+      margin-bottom: 5px;
+    }
+    .comment-form {
+      display: flex;
+      margin-top: 10px;
+    }
+    .comment-input {
+      flex: 1;
+      padding: 5px;
+    }
+    .comment-button {
+      padding: 5px 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Chat Page</h1>
+
+  <div id="loginSection">
+    <h2>Login</h2>
+    <form id="loginForm">
+      <label for="loginUsername">Username:</label>
+      <input type="text" id="loginUsername" name="loginUsername" required>
+      <label for="loginPassword">Password:</label>
+      <input type="password" id="loginPassword" name="loginPassword" required>
+      <input type="submit" value="Login">
+    </form>
+    <p>Don't have an account? <a href="#" id="showSignup">Sign Up</a></p>
+  </div>
+
+  <div id="signupSection" style="display: none;">
+    <h2>Sign Up</h2>
+    <form id="signupForm">
+      <label for="signupUsername">Username:</label>
+      <input type="text" id="signupUsername" name="signupUsername" required>
+      <label for="signupPassword">Password:</label>
+      <input type="password" id="signupPassword" name="signupPassword" required>
+      <label for="signupImage">Cover Image URL:</label>
+      <input type="text" id="signupImage" name="signupImage" placeholder="Image URL">
+      <input type="submit" value="Sign Up">
+    </form>
+    <p>Already have an account? <a href="#" id="showLogin">Login</a></p>
+  </div>
+
+  <div id="navbar">
+    <span id="goToDashboard" class="nav-button">Dashboard</span>
+    <span id="goToChats" class="nav-button">Chats</span>
+  </div>
+
+  <div id="dashboardSection">
+    <h2>Dashboard</h2>
+    <div id="userList"></div>
+    <input type="file" id="imageInput">
+    <input type="file" id="videoInput">
+    <div id="posts"></div>
+  </div>
+
+  <div id="chatSection">
+    <h2>Chat</h2>
+    <div id="messages"></div>
+    <input type="text" id="newMessage" placeholder="Enter your message">
+    <button id="sendMessage">Send</button>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const socket = io();
+      const loginSection = document.getElementById('loginSection');
+      const signupSection = document.getElementById('signupSection');
+      const dashboardSection = document.getElementById('dashboardSection');
+      const chatSection = document.getElementById('chatSection');
+      const showSignupLink = document.getElementById('showSignup');
+      const showLoginLink = document.getElementById('showLogin');
+      const loginForm = document.getElementById('loginForm');
+      const signupForm = document.getElementById('signupForm');
+      const messagesDiv = document.getElementById('messages');
+      const sendMessageBtn = document.getElementById('sendMessage');
+      const newMessageInput = document.getElementById('newMessage');
+      const userList = document.getElementById('userList');
+      const imageInput = document.getElementById('imageInput');
+      const videoInput = document.getElementById('videoInput');
+      const postsDiv = document.getElementById('posts');
+      const goToChats = document.getElementById('goToChats');
+      const goToDashboard = document.getElementById('goToDashboard');
+
+      showSignupLink.addEventListener('click', () => {
+        loginSection.style.display = 'none';
+        signupSection.style.display = 'block';
+      });
+
+      showLoginLink.addEventListener('click', () => {
+        signupSection.style.display = 'none';
+        loginSection.style.display = 'block';
+      });
+
+      signupForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const username = document.getElementById('signupUsername').value;
+        const password = document.getElementById('signupPassword').value;
+        const image = document.getElementById('signupImage').value;
+
+        const users = JSON.parse(localStorage.getItem('users')) || [];
+        const userExists = users.some(user => user.username === username);
+        if (userExists) {
+          alert('Username already exists. Please choose a different username.');
+          return;
+        }
+
+        users.push({ username, password, image });
+        localStorage.setItem('users', JSON.stringify(users));
+        alert('User registered successfully. You can now log in.');
+        signupSection.style.display = 'none';
+        loginSection.style.display = 'block';
+      });
+
+      loginForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const username = document.getElementById('loginUsername').value;
+        const password = document.getElementById('loginPassword').value;
+
+        const users = JSON.parse(localStorage.getItem('users')) || [];
+        const user = users.find(user => user.username === username && user.password === password);
+        if (!user) {
+          alert('Invalid username or password.');
+          return;
+        }
+
+        loginSection.style.display = 'none';
+        dashboardSection.style.display = 'block';
+
+        const userDiv = document.createElement('div');
+        userDiv.className = 'user';
+        userDiv.innerHTML = `<img src="${user.image}" alt="User Image"><p>${user.username}</p>`;
+        userList.appendChild(userDiv);
+
+        socket.emit('join', user.username);
+
+        const storedMessages = localStorage.getItem('messages');
+        if (storedMessages) {
+          messagesDiv.innerHTML = storedMessages;
+        }
+
+        sendMessageBtn.addEventListener('click', () => {
+          const message = newMessageInput.value.trim();
+          if (message !== '') {
+            socket.emit('chat', { username: user.username, message });
+            newMessageInput.value = '';
+          }
+        });
+
+        socket.on('chat', (data) => {
+          const messageDiv = document.createElement('div');
+          messageDiv.innerHTML = `<strong>${data.username}:</strong> ${data.message}`;
+          messagesDiv.appendChild(messageDiv);
+          localStorage.setItem('messages', messagesDiv.innerHTML);
+        });
+
+        imageInput.addEventListener('change', () => {
+          const file = imageInput.files[0];
+          const formData = new FormData();
+          formData.append('media', file);
+          formData.append('username', user.username); // Send username with the form data
+          fetch('/upload', {
+            method: 'POST',
+            body: formData
+          })
+          .then(response => response.json())
+          .then(post => {
+            const postDiv = document.createElement('div');
+            postDiv.className = 'post';
+            postDiv.innerHTML = `<p class="username">${post.username}</p><img src="${post.url}" alt="Image">
+                                  <div class="reaction-buttons">
+                                    <button>❤️</button>
+                                    <button>😡</button>
+                                    <button>👍</button>
+                                  </div>
+                                  <div class="comments"></div>
+                                  <div class="comment-form">
+                                    <input type="text" class="comment-input" placeholder="Add a comment">
+                                    <button class="comment-button">Comment</button>
+                                  </div>`;
+            postsDiv.appendChild(postDiv);
+            addCommentFunctionality(postDiv, post);
+          })
+          .catch(error => console.error('Error uploading file:', error));
+        });
+
+        videoInput.addEventListener('change', () => {
+          const file = videoInput.files[0];
+          const formData = new FormData();
+          formData.append('media', file);
+          formData.append('username', user.username); // Send username with the form data
+          fetch('/upload', {
+            method: 'POST',
+            body: formData
+          })
+          .then(response => response.json())
+          .then(post => {
+            const postDiv = document.createElement('div');
+            postDiv.className = 'post';
+            postDiv.innerHTML = `<p class="username">${post.username}</p><video controls>
+                                  <source src="${post.url}" type="video/mp4">Your browser does not support the video tag.</video>
+                                  <div class="reaction-buttons">
+                                    <button>❤️</button>
+                                    <button>😡</button>
+                                    <button>👍</button>
+                                  </div>
+                                  <div class="comments"></div>
+                                  <div class="comment-form">
+                                    <input type="text" class="comment-input" placeholder="Add a comment">
+                                    <button class="comment-button">Comment</button>
+                                  </div>`;
+            postsDiv.appendChild(postDiv);
+            addCommentFunctionality(postDiv, post);
+          })
+          .catch(error => console.error('Error uploading file:', error));
+        });
+
+        fetch('/posts')
+          .then(response => response.json())
+          .then(posts => {
+            posts.forEach((post, index) => {
+              const postDiv = document.createElement('div');
+              postDiv.className = 'post';
+              if (post.type === 'image') {
+                postDiv.innerHTML = `<p class="username">${post.username}</p><img src="${post.url}" alt="Image">
+                                     <div class="reaction-buttons">
+                                       <button>❤️</button>
+                                       <button>😡</button>
+                                       <button>👍</button>
+                                     </div>
+                                     <div class="comments"></div>
+                                     <div class="comment-form">
+                                       <input type="text" class="comment-input" placeholder="Add a comment">
+                                       <button class="comment-button">Comment</button>
+                                     </div>`;
+              } else if (post.type === 'video') {
+                postDiv.innerHTML = `<p class="username">${post.username}</p><video controls>
+                                     <source src="${post.url}" type="video/mp4">Your browser does not support the video tag.</video>
+                                     <div class="reaction-buttons">
+                                       <button>❤️</button>
+                                       <button>😡</button>
+                                       <button>👍</button>
+                                     </div>
+                                     <div class="comments"></div>
+                                     <div class="comment-form">
+                                       <input type="text" class="comment-input" placeholder="Add a comment">
+                                       <button class="comment-button">Comment</button>
+                                     </div>`;
+              }
+              postsDiv.appendChild(postDiv);
+              addCommentFunctionality(postDiv, post, index);
+            });
+          });
+
+        goToChats.addEventListener('click', () => {
+          dashboardSection.style.display = 'none';
+          chatSection.style.display = 'block';
+        });
+
+        goToDashboard.addEventListener('click', () => {
+          chatSection.style.display = 'none';
+          dashboardSection.style.display = 'block';
+        });
+      });
+
+      function addCommentFunctionality(postDiv, post, index) {
+        const commentsDiv = postDiv.querySelector('.comments');
+        const commentForm = postDiv.querySelector('.comment-form');
+        const commentInput = commentForm.querySelector('.comment-input');
+        const commentButton = commentForm.querySelector('.comment-button');
+
+        post.comments.forEach(comment => {
+          const commentDiv = document.createElement('div');
+          commentDiv.className = 'comment';
+          commentDiv.innerHTML = `<strong>${comment.username}:</strong> ${comment.comment}`;
+          commentsDiv.appendChild(commentDiv);
+        });
+
+        commentButton.addEventListener('click', () => {
+          const commentText = commentInput.value.trim();
+          if (commentText !== '') {
+            const commentData = { postId: index, username: post.username, comment: commentText };
+            fetch('/comment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(commentData)
+            })
+            .then(response => response.json())
+            .then(updatedPost => {
+              const commentDiv = document.createElement('div');
+              commentDiv.className = 'comment';
+              commentDiv.innerHTML = `<strong>${updatedPost.comments[updatedPost.comments.length - 1].username}:</strong> ${updatedPost.comments[updatedPost.comments.length - 1].comment}`;
+              commentsDiv.appendChild(commentDiv);
+              commentInput.value = '';
+            })
+            .catch(error => console.error('Error adding comment:', error));
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>
